@@ -23,6 +23,11 @@ FastAPI proxy to RAWG with 15-min in-memory cache; MongoDB: users, user_sessions
 - Compare (/compare?a=&b=): side-by-side stats, winner highlight, live PC price (CheapShark) + store links; PC price box on game pages
 - Tested: iteration 3 (48/48 backend) + follow-up fixes
 
+## Iteration 3 (2026-10)
+- Favicon/app icons + manifest, real title/meta; AdSense script + ads.txt (Auto ads)
+- Consent Mode v2 defaults (EEA/UK/CH denied) + cookie banner for Europe timezones, reopen from footer/privacy
+- /showcases fixed-list countdown hub (src/data/showcases.js), /about, /privacy, /contact (saved to contact_messages, 5/hr/IP)
+
 ## Backlog
 - P1: Showcase/event countdown hub, user profiles
 - P2: Price-drop alerts, follow other gamers

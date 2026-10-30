@@ -68,7 +68,7 @@ export default function Showcases() {
         ))}
       </div>
       <div className="space-y-3" data-testid="showcase-list">
-        {list.map((e) => <Row key={e.id} e={e} now={now} />)}
+        {list.slice(1).map((e) => <Row key={e.id} e={e} now={now} />)}
         {list.length === 0 && <p className="text-slate-400" data-testid="showcase-empty">No upcoming shows in this category yet.</p>}
       </div>
       {past.length > 0 && (

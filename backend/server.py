@@ -600,7 +600,7 @@ class ContactIn(BaseModel):
 
 @api.post("/contact")
 async def contact(body: ContactIn, request: Request):
-    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "").split(",")[0].strip()
+    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "").split(",")[-1].strip()
     since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
     if await db.contact_messages.count_documents({"ip": ip, "created_at": {"$gte": since}}) >= 5:
         raise HTTPException(429, "Too many messages — please try again later.")
