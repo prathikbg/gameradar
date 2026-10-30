@@ -61,7 +61,34 @@ class TestGames:
         res = r.json()["results"]
         assert len(res) > 0
         if kind == "toprated":
-            assert all(g["metacritic"] for g in res)
+            # now rating-sorted with ratings_count floor
+            ratings = [g["rating"] or 0 for g in res]
+            assert ratings == sorted(ratings, reverse=True)
+            assert all((g["ratings_count"] or 0) >= 5 for g in res)
+
+    def test_charts_toprated_platform(self):
+        r = requests.get(f"{API}/games/charts", params={"kind": "toprated", "platform": "pc"}, timeout=30)
+        assert r.status_code == 200 and len(r.json()["results"]) > 0
+
+
+# ---------- Logout via Bearer ----------
+class TestLogoutBearer:
+    def test_logout_bearer_deletes_session(self):
+        out = subprocess.run(["mongosh", "test_database", "--quiet", "--eval", """
+var t='TEST_sessL_'+Date.now(); var u='TEST_userL_'+Date.now();
+db.users.insertOne({user_id:u,email:u+'@example.com',name:'Test L',picture:'',created_at:new Date()});
+db.user_sessions.insertOne({user_id:u,session_token:t,expires_at:new Date(Date.now()+7*864e5),created_at:new Date()});
+print(t)"""], capture_output=True, text=True)
+        t = out.stdout.strip().splitlines()[-1]
+        h = {"Authorization": f"Bearer {t}"}
+        assert requests.get(f"{API}/auth/me", headers=h).status_code == 200
+        r = requests.post(f"{API}/auth/logout", headers=h)
+        assert r.status_code == 200 and r.json()["ok"] is True
+        assert requests.get(f"{API}/auth/me", headers=h).status_code == 401
+        cnt = subprocess.run(["mongosh", "test_database", "--quiet", "--eval",
+                              f"print(db.user_sessions.countDocuments({{session_token:'{t}'}}))"],
+                             capture_output=True, text=True).stdout.strip().splitlines()[-1]
+        assert cnt == "0"
 
     def test_upcoming_sorted(self):
         r = requests.get(f"{API}/games/upcoming", timeout=30)

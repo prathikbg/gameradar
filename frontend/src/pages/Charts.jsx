@@ -9,7 +9,7 @@ import { fmtDate } from "../lib/api";
 const KINDS = [
   { k: "trending", l: "Trending now" },
   { k: "alltime", l: "Most played all-time" },
-  { k: "toprated", l: "Critics' top (12 mo)" },
+  { k: "toprated", l: "Top rated (12 mo)" },
 ];
 
 const Row = ({ g, i, max }) => (

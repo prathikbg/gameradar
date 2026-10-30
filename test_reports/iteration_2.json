@@ -1,0 +1,25 @@
+{
+  "summary": "Retest of iteration-1 bugs. All fixed. Backend 26/26 pytest pass (incl. new toprated sort/ratings_count checks, toprated+platform, Bearer logout deletes session -> /auth/me 401 and DB count 0). Frontend: /game/3498 -> Ask Radar AI -> /ai-guide shows exactly 1 user bubble + 1 assistant bubble with clean streamed reply, ?q removed from URL, no page errors; typed follow-up streams into new assistant bubble, send disabled during stream and re-enabled after; Charts Critics' Top shows 20 rows; Calendar shows '1 GAME' singular; AI guide has no footer, page scrollHeight == viewport (1080) and input pinned at bottom.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Charts", "issues": ["Tab label 'Critics' top (12 mo)' is now backed by RAWG user rating (not metacritic) - consider renaming to 'Top rated (12 mo)' for accuracy"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_gameradar_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": ["Optional: rename Critics' top tab label to reflect user-rating source"],
+  "critical_code_review_comments": [
+    "charts toprated: fetches only 40 most-added games then sorts locally, so ranking is limited to that subset (acceptable MVP)",
+    "AIGuide: message list uses index keys; fine for append-only list"
+  ],
+  "updated_files": ["/app/backend/tests/test_gameradar_api.py"],
+  "success_rate": {"backend": "100% (26/26)", "frontend": "100%"},
+  "test_credentials": "Emergent Google auth; sessions created via mongosh (fixtures in test file).",
+  "seed_data_creation": "TEST_ users/sessions created and cleaned up",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Container clock Oct 2026. Game 3498 = GTA V. toprated test now asserts rating-desc order and ratings_count>=5 instead of metacritic.",
+  "rca of the issue": "N/A - previous issues resolved"
+}
