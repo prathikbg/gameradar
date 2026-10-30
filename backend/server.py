@@ -579,6 +579,36 @@ async def cron_release_reminders(request: Request, background: BackgroundTasks):
     return {"status": "accepted", "run_id": run_id}
 
 
+# ---------- Contact ----------
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class ContactIn(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    email: str = Field(max_length=200)
+    subject: str = Field(default="General", max_length=60)
+    message: str = Field(min_length=10, max_length=5000)
+
+    @field_validator("email")
+    @classmethod
+    def valid_email(cls, v):
+        v = v.strip()
+        if not EMAIL_RE.match(v):
+            raise ValueError("Invalid email")
+        return v
+
+
+@api.post("/contact")
+async def contact(body: ContactIn, request: Request):
+    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "").split(",")[0].strip()
+    since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+    if await db.contact_messages.count_documents({"ip": ip, "created_at": {"$gte": since}}) >= 5:
+        raise HTTPException(429, "Too many messages — please try again later.")
+    await db.contact_messages.insert_one({**body.model_dump(), "ip": ip, "status": "new",
+                                          "created_at": datetime.now(timezone.utc).isoformat()})
+    return {"ok": True}
+
+
 app.include_router(api)
 
 app.add_middleware(

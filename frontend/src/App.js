@@ -1,4 +1,5 @@
 import "@/App.css";
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
 import { AuthProvider } from "./context/AuthContext";
@@ -15,9 +16,15 @@ import Search from "./pages/Search";
 import AuthCallback from "./pages/AuthCallback";
 import News from "./pages/News";
 import Compare from "./pages/Compare";
+import Showcases from "./pages/Showcases";
+import About from "./pages/About";
+import Privacy from "./pages/Privacy";
+import Contact from "./pages/Contact";
+import CookieConsent from "./components/CookieConsent";
 
 function AppRouter() {
   const location = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [location.pathname]);
   if (location.hash?.includes("session_id=")) return <AuthCallback />;
   return (
     <>
@@ -34,9 +41,14 @@ function AppRouter() {
           <Route path="/search" element={<Search />} />
           <Route path="/news" element={<News />} />
           <Route path="/compare" element={<Compare />} />
+          <Route path="/showcases" element={<Showcases />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/contact" element={<Contact />} />
         </Routes>
       </main>
       {location.pathname !== "/ai-guide" && <Footer />}
+      <CookieConsent />
     </>
   );
 }

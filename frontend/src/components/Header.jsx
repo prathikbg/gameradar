@@ -10,6 +10,7 @@ const LINKS = [
   { label: "Charts", to: "/charts", id: "charts" },
   { label: "Calendar", to: "/calendar", id: "calendar" },
   { label: "News", to: "/news", id: "news" },
+  { label: "Showcases", to: "/showcases", id: "showcases" },
   { label: "Compare", to: "/compare", id: "compare" },
   { label: "AI Guide", to: "/ai-guide", id: "ai-guide" },
   { label: "Wishlist", to: "/wishlist", id: "wishlist" },
