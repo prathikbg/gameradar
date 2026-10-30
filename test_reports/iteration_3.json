@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 3: tested News, Player Reviews, PC price (CheapShark), Compare, Release Reminders (prefs + cron) and the new nav links, plus regression. Backend: 48/48 pytest pass (22 new + 26 regression). News: all/platform/category filters return correctly filtered items. Cyberpunk price is $17.99 with deals. Reviews: 401 when signed out, 422 for rating 0/6, text<3 chars or missing rating; upsert keeps one review per user; delete works. Reminders GET/PUT persist. Cron: 401 with no Bearer or a wrong one; the valid secret returns accepted; a repeated X-Webhook-Id returns duplicate. Only the enabled user's today-release item was sent and recorded (Email API 202 to delivered@resend.dev). The future-release item and the disabled user got nothing. A 2nd run sent 0 (no double send). Frontend: /news grid (60 items) and all 10 chips work; items open in a new tab via target=_blank. Game detail shows price-box, reviews-section and review-login-btn when signed out. Signed-in review post/edit/delete works with the summary average and no duplicates; edits persist after reload. Compare: picker search/select, URL ?a=&b= updates, 11 rows, winners highlighted (correctly incl. lowest price), game-detail-compare prefills a, compare-clear-a/b work. Wishlist reminder switch toggles and persists after reload. Nav links show at >=1280 and in the mobile menu below that. Regression: home, charts and AI guide streaming still work. No page errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/games/{id}/reviews", "issue": "min_length=3 is checked before strip(): text '   ' (3 spaces) passes validation and is stored as an empty review"},
+      {"endpoint": "run_release_reminders", "issue": "Uses the 'released' date copied into the wishlist doc when the game was added; if RAWG changes the release date later, the reminder fires on the wrong day or never. Two concurrent runs with different run_ids could also double-send (check-then-insert, no unique index on reminders_sent{user_id,game_id}). A background exception leaves cron_runs status 'queued'"},
+      {"endpoint": "GET /api/news", "issue": "Category 'showcase' currently returns 0 items. Nintendo has no dedicated feed (only 5 keyword matches); 'nintendo'+'patches' is empty. Consider adding the Nintendo news RSS"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Compare first load", "issue": "In one run, slot B (Witcher 3) stayed on the loading skeleton for >5s on first uncached CheapShark lookup, and the picker shows empty input while loading. It loaded fine on retry. useGame uses Promise.all, so if /price fails the whole game silently goes null; use allSettled and treat price as optional", "affected_selectors": ["compare-cell-price", "compare-head-{id}"]},
+      {"flow": "Reviews / ReminderToggle error handling", "issue": "Reviews submit has try/finally with no catch, delete has no try, and ReminderToggle applies the change before PUT with no revert. An API error gives no error toast, an unhandled rejection and a stale optimistic state", "affected_selectors": ["review-submit-btn", "review-delete-btn", "reminder-toggle-switch"]}
+    ],
+    "design_issues": [
+      {"screen": "Header (1920px viewport)", "issues": ["Nav is crowded: 'New Releases', 'AI Guide' and the 'Sign in' button wrap onto two lines. Add whitespace-nowrap and/or tighten the gap or search width"]},
+      {"screen": "Compare (mobile 390px)", "issues": ["Table has min-w 560px, so game B's column is off-screen and needs horizontal scroll inside the card. Picker chip names truncate to 'Cy…'/'Th…'"]},
+      {"screen": "Wishlist reminder card", "issues": ["Unchecked switch is a light track with a light thumb, so the off state has low contrast on the dark theme"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter3_features.py", "/app/backend/tests/test_gameradar_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Header: stop the nav labels and Sign in button wrapping at desktop widths",
+    "Compare: use Promise.allSettled so a slow or failed price call doesn't blank the game; improve the mobile layout",
+    "Add catch plus an error toast in Reviews submit/delete, and revert the toggle in ReminderToggle on failure",
+    "Optional: strip review text before the min-length check; add a unique index on reminders_sent(user_id, game_id); add a Nintendo RSS feed"
+  ],
+  "critical_code_review_comments": [
+    "server.py upsert_review: validate text.strip() length (pydantic field_validator)",
+    "run_release_reminders: check-then-insert race; use a unique index + insert-first or $setOnInsert to guarantee no double send",
+    "Compare.jsx useGame: Promise.all couples detail, price and reviews; one failure removes the whole game",
+    "news.py: category is keyword-matched on the title only; 'season'/'version'/'event' are broad and can mislabel stories"
+  ],
+  "updated_files": ["/app/backend/tests/test_iter3_features.py"],
+  "success_rate": {"backend": "100% (48/48)", "frontend": "100% functional; 3 minor design issues"},
+  "test_credentials": "Emergent Google auth; test users/sessions created via mongosh with email delivered@resend.dev; cron uses WEBHOOK_CRON_SECRET from backend/.env",
+  "seed_data_creation": "TEST_ users, sessions, wishlist items (game_ids 990001-990003, 41494), reviews, reminders_sent and cron_runs were created during tests and all deleted afterwards",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Server date 2026-10-30. pytest.ini runs xdist with --dist loadscope; classes can run on different workers, so module fixture cleanup only deletes the users it created (CREATED list). The cron test seeds a wishlist item with released=today and polls cron_runs until done. To run a single file serially use -n 0. AI chat input testid is ai-chat-input (placeholder uses a unicode ellipsis).",
+  "rca of the issue": "Initial cron test failure was test-isolation only: a teardown on another xdist worker deleted TEST_ cron_runs mid-run. Fixed by scoping cleanup to the created ids. The app was not at fault."
+}

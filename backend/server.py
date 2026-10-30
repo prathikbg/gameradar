@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import DuplicateKeyError
 import os
 import re
 import hmac
@@ -13,7 +14,7 @@ import uuid
 import asyncio
 from html import escape
 from pathlib import Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta, date
 import httpx
@@ -341,7 +342,15 @@ async def news(platform: Optional[str] = None, category: Optional[str] = None, l
 # ---------- Reviews ----------
 class ReviewIn(BaseModel):
     rating: int = Field(ge=1, le=5)
-    text: str = Field(min_length=3, max_length=2000)
+    text: str = Field(max_length=2000)
+
+    @field_validator("text")
+    @classmethod
+    def strip_text(cls, v):
+        v = v.strip()
+        if len(v) < 3:
+            raise ValueError("Review must be at least 3 characters")
+        return v
 
 
 @api.get("/games/{game_id}/reviews")
@@ -453,29 +462,63 @@ def reminder_html(name: str, games: list):
             f'</td></tr></table>')
 
 
+async def refresh_release_dates(today: str):
+    week_ago = (date.today() - timedelta(days=7)).isoformat()
+    ids = await db.wishlist.distinct("game_id", {"$or": [{"released": {"$gte": week_ago}}, {"released": None}]})
+    for gid in ids:
+        try:
+            d = await rawg(f"/games/{gid}")
+        except HTTPException:
+            continue
+        if d.get("released"):
+            await db.wishlist.update_many({"game_id": gid}, {"$set": {"released": d["released"]}})
+
+
 async def run_release_reminders(run_id: str):
+    try:
+        sent = await _send_reminders(run_id)
+        await db.cron_runs.update_one({"run_id": run_id}, {"$set": {"status": "done", "emails_sent": sent}})
+    except Exception as e:
+        logging.exception("Reminder run failed")
+        await db.cron_runs.update_one({"run_id": run_id}, {"$set": {"status": "failed", "error": str(e)}})
+
+
+async def _send_reminders(run_id: str):
     today = date.today().isoformat()
+    await refresh_release_dates(today)
     items = await db.wishlist.find({"released": today}, {"_id": 0}).to_list(5000)
     by_user: dict = {}
     for it in items:
-        if await db.reminders_sent.find_one({"user_id": it["user_id"], "game_id": it["game_id"]}):
-            continue
         by_user.setdefault(it["user_id"], []).append(it)
     sent = 0
     for user_id, games in by_user.items():
         user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
         if not user or user.get("reminders_enabled", True) is False:
             continue
-        subject = f"Out today: {games[0]['name']}" + (f" + {len(games) - 1} more" if len(games) > 1 else "")
+        claimed = []
+        for g in games:
+            try:
+                await db.reminders_sent.insert_one({"user_id": user_id, "game_id": g["game_id"], "run_id": run_id,
+                                                    "sent_at": datetime.now(timezone.utc).isoformat()})
+                claimed.append(g)
+            except DuplicateKeyError:
+                pass
+        if not claimed:
+            continue
+        subject = f"Out today: {claimed[0]['name']}" + (f" + {len(claimed) - 1} more" if len(claimed) > 1 else "")
         try:
-            await send_email(to=user["email"], subject=subject, html=reminder_html(user["name"], games))
+            await send_email(to=user["email"], subject=subject, html=reminder_html(user["name"], claimed))
+            sent += 1
         except Exception:
             logging.exception("Reminder email failed")
-            continue
-        sent += 1
-        await db.reminders_sent.insert_many([{"user_id": user_id, "game_id": g["game_id"], "run_id": run_id,
-                                              "sent_at": datetime.now(timezone.utc).isoformat()} for g in games])
-    await db.cron_runs.update_one({"run_id": run_id}, {"$set": {"status": "done", "emails_sent": sent}})
+            await db.reminders_sent.delete_many({"user_id": user_id, "run_id": run_id})
+    return sent
+
+
+@app.on_event("startup")
+async def startup():
+    await db.reminders_sent.create_index([("user_id", 1), ("game_id", 1)], unique=True)
+    await db.cron_runs.create_index("run_id", unique=True)
 
 
 @api.post("/cron/release-reminders")
@@ -493,8 +536,11 @@ async def cron_release_reminders(request: Request, background: BackgroundTasks):
     run_id = request.headers.get("X-Webhook-Id") or body.get("run_id") or f"manual_{uuid.uuid4().hex[:8]}"
     if await db.cron_runs.find_one({"run_id": run_id}):
         return {"status": "duplicate"}
-    await db.cron_runs.insert_one({"run_id": run_id, "job": "release-reminders", "status": "queued",
-                                   "created_at": datetime.now(timezone.utc).isoformat()})
+    try:
+        await db.cron_runs.insert_one({"run_id": run_id, "job": "release-reminders", "status": "queued",
+                                       "created_at": datetime.now(timezone.utc).isoformat()})
+    except DuplicateKeyError:
+        return {"status": "duplicate"}
     background.add_task(run_release_reminders, run_id)
     return {"status": "accepted", "run_id": run_id}
 

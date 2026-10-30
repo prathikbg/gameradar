@@ -16,7 +16,13 @@ FastAPI proxy to RAWG with 15-min in-memory cache; MongoDB: users, user_sessions
 - Search, AI Guide (SSE streaming, persisted history), Google login + wishlist
 - Tested: iterations 1–2 all passing
 
+## Iteration 2 (2026-06)
+- Release-day email reminders (Emergent managed Resend, daily cron 9am UTC via .emergent/crons.yml -> /api/cron/release-reminders, refreshes RAWG dates, idempotent), toggle on Wishlist
+- News feed (/news): PlayStation Blog, Xbox Wire, IGN, GameSpot, PC Gamer, Nintendo Everything, My Nintendo News RSS; platform + category filters
+- Player reviews (1–5 stars + text, one per user/game) on game pages
+- Compare (/compare?a=&b=): side-by-side stats, winner highlight, live PC price (CheapShark) + store links; PC price box on game pages
+- Tested: iteration 3 (48/48 backend) + follow-up fixes
+
 ## Backlog
-- P1: Release reminders by email for wishlisted games
-- P1: Gaming news feed
-- P2: User reviews/ratings, compare games, game deals/price tracking
+- P1: Showcase/event countdown hub, user profiles
+- P2: Price-drop alerts, follow other gamers

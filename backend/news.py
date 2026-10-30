@@ -10,6 +10,8 @@ FEEDS = [
     {"source": "IGN", "url": "https://feeds.feedburner.com/ign/games-all", "platform": None},
     {"source": "GameSpot", "url": "https://www.gamespot.com/feeds/game-news/", "platform": None},
     {"source": "PC Gamer", "url": "https://www.pcgamer.com/rss/", "platform": "pc"},
+    {"source": "Nintendo Everything", "url": "https://nintendoeverything.com/feed/", "platform": "nintendo"},
+    {"source": "My Nintendo News", "url": "https://mynintendonews.com/feed/", "platform": "nintendo"},
 ]
 PLATFORM_WORDS = {
     "playstation": ["ps5", "ps4", "playstation", "dualsense", "state of play", "ps plus"],
@@ -18,9 +20,10 @@ PLATFORM_WORDS = {
     "pc": ["pc", "steam", "epic games store", "nvidia", "amd", "gpu"],
 }
 CATEGORY_WORDS = {
-    "patches": ["patch", "update", "hotfix", "season", "dlc", "expansion", "version"],
-    "showcase": ["showcase", "direct", "state of play", "summer game fest", "gamescom", "event", "the game awards", "livestream"],
-    "announcements": ["announce", "reveal", "revealed", "release date", "trailer", "coming", "launch", "pre-order"],
+    "showcase": ["showcase", "direct", "state of play", "summer game fest", "gamescom", "the game awards", "livestream",
+                 "presentation", "games show", "tokyo game show", "partner showcase", "everything announced", "event"],
+    "patches": ["patch", "patch notes", "update", "hotfix", "season", "dlc", "expansion", "version"],
+    "announcements": ["announce", "announced", "announces", "reveal", "revealed", "release date", "trailer", "coming", "launch", "pre-order"],
 }
 TTL = 1800
 _cache = {"t": 0, "items": []}

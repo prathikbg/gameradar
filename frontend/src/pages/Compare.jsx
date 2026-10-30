@@ -10,9 +10,11 @@ const useGame = (id) => {
   useEffect(() => {
     if (!id) { setG(null); return; }
     setG({ loading: true });
-    Promise.all([api.get(`/games/${id}`), api.get(`/games/${id}/price`), api.get(`/games/${id}/reviews`)])
-      .then(([d, p, r]) => setG({ ...d.data, price: p.data, community: r.data }))
-      .catch(() => setG(null));
+    Promise.allSettled([api.get(`/games/${id}`), api.get(`/games/${id}/price`), api.get(`/games/${id}/reviews`)])
+      .then(([d, p, r]) => {
+        if (d.status !== "fulfilled") { setG(null); return; }
+        setG({ ...d.value.data, price: p.value?.data, community: r.value?.data });
+      });
   }, [id]);
   return g;
 };
@@ -35,7 +37,7 @@ const Cell = ({ row, g, other }) => {
   const ready = g && !g.loading;
   const win = ready && other && !other.loading && row.n && row.n(g) > row.n(other);
   return (
-    <td className={`p-4 align-top text-sm ${win ? "bg-[#FF9F1C]/10" : ""}`} data-testid={`compare-cell-${row.k}`}>
+    <td className={`break-words p-2 align-top text-xs sm:p-4 sm:text-sm ${win ? "bg-[#FF9F1C]/10" : ""}`} data-testid={`compare-cell-${row.k}`}>
       {!g ? <span className="text-slate-600">—</span> : g.loading ? <div className="h-4 w-24 animate-pulse rounded bg-slate-800" /> :
         <span className="flex items-start gap-2">{win && <Trophy className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#FF9F1C]" />}<span>{row.v(g)}</span></span>}
     </td>
@@ -45,7 +47,7 @@ const Cell = ({ row, g, other }) => {
 const Head = ({ g }) => g && !g.loading ? (
   <Link to={`/game/${g.id}`} className="block overflow-hidden rounded-xl border border-white/10" data-testid={`compare-head-${g.id}`}>
     <img src={g.background_image} alt="" className="aspect-video w-full object-cover" />
-    <p className="font-display truncate p-3 text-lg font-bold">{g.name}</p>
+    <p className="font-display truncate p-2 text-sm font-bold sm:p-3 sm:text-lg">{g.name}</p>
   </Link>
 ) : <div className="aspect-[16/10.5] rounded-xl border border-dashed border-white/10" />;
 
@@ -61,23 +63,23 @@ export default function Compare() {
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-12">
       <p className="font-mono text-xs uppercase tracking-[0.25em] text-[#00F0FF]">Head to head</p>
       <h1 className="font-display mt-2 text-4xl font-black uppercase tracking-tight sm:text-5xl lg:text-6xl">Compare games</h1>
-      <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-6">
+      <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-6">
         <GamePicker slot="a" selected={ga && !ga.loading ? ga : null} onPick={(id) => set("a", id)} onClear={() => set("a", null)} />
         <GamePicker slot="b" selected={gb && !gb.loading ? gb : null} onPick={(id) => set("b", id)} onClear={() => set("b", null)} />
       </div>
       <div className="mt-6 overflow-x-auto rounded-2xl border border-white/10">
-        <table className="w-full min-w-[560px] table-fixed" data-testid="compare-table">
+        <table className="w-full table-fixed" data-testid="compare-table">
           <thead>
             <tr className="bg-[#0E1117]">
-              <th className="w-36 p-4" />
-              <th className="p-4"><Head g={ga} /></th>
-              <th className="p-4"><Head g={gb} /></th>
+              <th className="w-20 p-2 sm:w-36 sm:p-4" />
+              <th className="p-2 sm:p-4"><Head g={ga} /></th>
+              <th className="p-2 sm:p-4"><Head g={gb} /></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {ROWS.map((r) => (
               <tr key={r.k}>
-                <th className="p-4 text-left align-top font-mono text-[10px] font-normal uppercase tracking-widest text-slate-500">{r.l}</th>
+                <th className="p-2 text-left align-top font-mono text-[10px] font-normal uppercase tracking-widest text-slate-500 sm:p-4">{r.l}</th>
                 <Cell row={r} g={ga} other={gb} />
                 <Cell row={r} g={gb} other={ga} />
               </tr>

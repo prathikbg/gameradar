@@ -28,9 +28,14 @@ const Form = ({ gameId, mine, onSaved }) => {
       await api.post(`/games/${gameId}/reviews`, { rating, text });
       toast.success(mine ? "Review updated" : "Review posted");
       onSaved();
+    } catch {
+      toast.error("Couldn't save your review. Please try again.");
     } finally { setSaving(false); }
   };
-  const remove = async () => { await api.delete(`/games/${gameId}/reviews`); toast("Review deleted"); onSaved(); };
+  const remove = async () => {
+    try { await api.delete(`/games/${gameId}/reviews`); toast("Review deleted"); onSaved(); }
+    catch { toast.error("Couldn't delete your review."); }
+  };
 
   return (
     <form onSubmit={submit} className="glass space-y-3 rounded-xl p-5" data-testid="review-form">

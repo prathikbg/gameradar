@@ -20,7 +20,7 @@ const UserArea = () => {
   if (!user)
     return (
       <button data-testid="google-login-button" onClick={login}
-        className="rounded-full bg-[#FF9F1C] px-4 py-2 text-sm font-bold text-black transition-transform hover:scale-105 active:scale-95">
+        className="whitespace-nowrap rounded-full bg-[#FF9F1C] px-4 py-2 text-sm font-bold text-black transition-transform hover:scale-105 active:scale-95">
         Sign in
       </button>
     );
@@ -48,7 +48,7 @@ export default function Header() {
     setOpen(false);
   };
   const linkCls = ({ isActive }) =>
-    `px-3 py-2 text-sm font-semibold transition-colors ${isActive ? "text-[#FF9F1C]" : "text-slate-400 hover:text-white"}`;
+    `whitespace-nowrap px-2.5 py-2 text-sm font-semibold transition-colors ${isActive ? "text-[#FF9F1C]" : "text-slate-400 hover:text-white"}`;
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#08090C]/85 backdrop-blur-xl">
@@ -65,9 +65,9 @@ export default function Header() {
         <form onSubmit={submit} className="ml-auto hidden items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 md:flex">
           <Search className="h-4 w-4 text-slate-500" />
           <input data-testid="global-search-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search games..."
-            className="w-40 bg-transparent text-sm outline-none placeholder:text-slate-500 xl:w-56" />
+            className="w-32 bg-transparent text-sm outline-none placeholder:text-slate-500 2xl:w-48" />
         </form>
-        <Link to="/ai-guide" data-testid="header-ai-button" className="hidden h-9 w-9 place-items-center rounded-full border border-[#00F0FF]/40 text-[#00F0FF] transition-colors hover:bg-[#00F0FF]/10 sm:grid md:ml-0 ml-auto">
+        <Link to="/ai-guide" data-testid="header-ai-button" className="hidden h-9 w-9 shrink-0 place-items-center rounded-full border border-[#00F0FF]/40 text-[#00F0FF] transition-colors hover:bg-[#00F0FF]/10 sm:grid md:ml-0 ml-auto">
           <Bot className="h-4 w-4" />
         </Link>
         <UserArea />
