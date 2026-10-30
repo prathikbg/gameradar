@@ -15,17 +15,13 @@ export const PLATFORMS = [
 export const fmtDate = (d) =>
   d ? new Date(d + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "TBA";
 
+const PLATFORM_SHORT = [
+  ["playstation 5", "PS5"], ["playstation 4", "PS4"], ["xbox series", "XSX"], ["xbox one", "XB1"],
+  ["switch", "Switch"], ["ios", "iOS"], ["android", "Android"], ["mac", "Mac"], ["linux", "Linux"],
+];
+
 export const platformShort = (name) => {
   const n = name.toLowerCase();
-  if (n.includes("playstation 5")) return "PS5";
-  if (n.includes("playstation 4")) return "PS4";
-  if (n.includes("xbox series")) return "XSX";
-  if (n.includes("xbox one")) return "XB1";
   if (n === "pc") return "PC";
-  if (n.includes("switch")) return "Switch";
-  if (n.includes("ios")) return "iOS";
-  if (n.includes("android")) return "Android";
-  if (n.includes("mac")) return "Mac";
-  if (n.includes("linux")) return "Linux";
-  return null;
+  return PLATFORM_SHORT.find(([match]) => n.includes(match))?.[1] ?? null;
 };

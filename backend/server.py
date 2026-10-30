@@ -527,7 +527,7 @@ async def _send_reminders(run_id: str):
     sent = 0
     for user_id, games in by_user.items():
         user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
-        if not user or user.get("reminders_enabled", True) is False:
+        if not user or not user.get("reminders_enabled", True):
             continue
         claimed = []
         for g in games:

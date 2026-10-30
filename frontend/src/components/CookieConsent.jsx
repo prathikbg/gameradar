@@ -11,8 +11,12 @@ const inEurope = () => {
   try { return Intl.DateTimeFormat().resolvedOptions().timeZone.startsWith("Europe/"); } catch { return false; }
 };
 
+// Only the non-sensitive consent choice ("granted" | "denied") is stored here.
+const readChoice = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
+const saveChoice = (c) => { try { localStorage.setItem(KEY, c); } catch { /* storage blocked */ } };
+
 const apply = (choice) => {
-  localStorage.setItem(KEY, choice);
+  saveChoice(choice);
   if (typeof window.gtag === "function") {
     window.gtag("consent", "update", { ad_storage: choice, ad_user_data: choice, ad_personalization: choice, analytics_storage: choice });
   }
@@ -20,7 +24,7 @@ const apply = (choice) => {
 };
 
 export default function CookieConsent() {
-  const [open, setOpen] = useState(() => !localStorage.getItem(KEY) && inEurope());
+  const [open, setOpen] = useState(() => !readChoice() && inEurope());
 
   useEffect(() => {
     const show = () => setOpen(true);

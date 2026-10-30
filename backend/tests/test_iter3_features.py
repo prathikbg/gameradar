@@ -69,7 +69,7 @@ class TestPrice:
         r = requests.get(f"{API}/games/{GAME}/price", timeout=60)
         assert r.status_code == 200
         d = r.json()
-        assert d["available"] is True
+        assert d["available"]
         assert isinstance(d["price"], float) and d["price"] > 0
         assert len(d["deals"]) >= 1 and d["deals"][0]["price"] == d["price"]
         assert d["url"].startswith("https://www.cheapshark.com/redirect")
@@ -92,22 +92,39 @@ class TestReviews:
 
     def test_crud(self, user):
         uid, h = user
-        before = requests.get(f"{API}/games/{GAME}/reviews").json()["count"]
-        r = requests.post(f"{API}/games/{GAME}/reviews", json={"rating": 4, "text": "TEST great game"}, headers=h)
-        assert r.status_code == 200
-        rid = r.json()["review_id"]
-        d = requests.get(f"{API}/games/{GAME}/reviews").json()
-        assert d["count"] == before + 1
-        mine = [x for x in d["reviews"] if x["user_id"] == uid]
-        assert len(mine) == 1 and mine[0]["rating"] == 4 and "_id" not in mine[0]
-        r2 = requests.post(f"{API}/games/{GAME}/reviews", json={"rating": 2, "text": "TEST changed"}, headers=h)
-        assert r2.json()["review_id"] == rid
-        d = requests.get(f"{API}/games/{GAME}/reviews").json()
-        mine = [x for x in d["reviews"] if x["user_id"] == uid]
-        assert d["count"] == before + 1 and len(mine) == 1 and mine[0]["rating"] == 2 and mine[0]["text"] == "TEST changed"
+        before = review_state(uid)[0]
+        post_review(h, 4, "TEST great game")
+        count, mine = review_state(uid)
+        assert count == before + 1 and len(mine) == 1
+        assert mine[0]["rating"] == 4 and "_id" not in mine[0]
+
+    def test_update_keeps_single_review(self, user):
+        uid, h = user
+        rid = post_review(h, 4, "TEST great game")["review_id"]
+        before = review_state(uid)[0]
+        assert post_review(h, 2, "TEST changed")["review_id"] == rid
+        count, mine = review_state(uid)
+        assert count == before and len(mine) == 1
+        assert (mine[0]["rating"], mine[0]["text"]) == (2, "TEST changed")
+
+    def test_delete(self, user):
+        uid, h = user
+        post_review(h, 3, "TEST to delete")
+        before = review_state(uid)[0]
         assert requests.delete(f"{API}/games/{GAME}/reviews", headers=h).status_code == 200
-        d = requests.get(f"{API}/games/{GAME}/reviews").json()
-        assert d["count"] == before and not [x for x in d["reviews"] if x["user_id"] == uid]
+        count, mine = review_state(uid)
+        assert count == before - 1 and not mine
+
+
+def review_state(uid):
+    d = requests.get(f"{API}/games/{GAME}/reviews").json()
+    return d["count"], [x for x in d["reviews"] if x["user_id"] == uid]
+
+
+def post_review(h, rating, text):
+    r = requests.post(f"{API}/games/{GAME}/reviews", json={"rating": rating, "text": text}, headers=h)
+    assert r.status_code == 200
+    return r.json()
 
 
 # ---------- Reminder prefs ----------
@@ -117,15 +134,47 @@ class TestReminderPrefs:
 
     def test_toggle(self, user):
         h = user[1]
-        d = requests.get(f"{API}/me/reminders", headers=h).json()
-        assert d["enabled"] is True and d["email"] == "delivered@resend.dev"
-        assert requests.put(f"{API}/me/reminders", json={"enabled": False}, headers=h).json()["enabled"] is False
-        assert requests.get(f"{API}/me/reminders", headers=h).json()["enabled"] is False
+        me = "delivered@resend.dev"
+        assert requests.get(f"{API}/me/reminders", headers=h).json() == {"enabled": True, "email": me}
+        assert requests.put(f"{API}/me/reminders", json={"enabled": False}, headers=h).json() == {"enabled": False}
+        assert requests.get(f"{API}/me/reminders", headers=h).json() == {"enabled": False, "email": me}
         requests.put(f"{API}/me/reminders", json={"enabled": True}, headers=h)
-        assert requests.get(f"{API}/me/reminders", headers=h).json()["enabled"] is True
+        assert requests.get(f"{API}/me/reminders", headers=h).json() == {"enabled": True, "email": me}
 
 
 # ---------- Cron ----------
+def trigger_cron(run_id):
+    return requests.post(f"{API}/cron/release-reminders",
+                         headers={"Authorization": f"Bearer {SECRET}", "X-Webhook-Id": run_id})
+
+
+def wait_for_run(run_id):
+    st = ""
+    for _ in range(20):
+        st = mongo(f"var r=db.cron_runs.findOne({{run_id:'{run_id}'}});print(r.status+'|'+r.emails_sent)")
+        if st.startswith("done"):
+            return st
+        time.sleep(1)
+    return st
+
+
+def sent_count(query):
+    return mongo(f"print(db.reminders_sent.countDocuments({query}))")
+
+
+def seed_cron_users(h):
+    today = date.today().isoformat()
+    requests.post(f"{API}/wishlist", json={"game_id": 989999001, "name": "TEST Today Game", "released": today,
+                                           "platforms": ["PC"]}, headers=h)
+    requests.post(f"{API}/wishlist", json={"game_id": 989999002, "name": "TEST Future Game",
+                                           "released": "2099-01-01"}, headers=h)
+    uid2, tok2 = make_user("delivered@resend.dev")
+    h2 = {"Authorization": f"Bearer {tok2}"}
+    requests.post(f"{API}/wishlist", json={"game_id": 989999003, "name": "TEST Disabled", "released": today}, headers=h2)
+    requests.put(f"{API}/me/reminders", json={"enabled": False}, headers=h2)
+    return uid2
+
+
 class TestCron:
     def test_no_auth(self):
         assert requests.post(f"{API}/cron/release-reminders").status_code == 401
@@ -135,44 +184,21 @@ class TestCron:
         assert r.status_code == 401
 
     def test_run_sends_once(self, user):
-        uid, h = user
-        today = date.today().isoformat()
-        # today's release -> should send; future release -> should not
-        requests.post(f"{API}/wishlist", json={"game_id": 989999001, "name": "TEST Today Game", "released": today,
-                                               "platforms": ["PC"]}, headers=h)
-        requests.post(f"{API}/wishlist", json={"game_id": 989999002, "name": "TEST Future Game",
-                                               "released": "2099-01-01"}, headers=h)
-        # disabled user with today's release -> no send
-        uid2, tok2 = make_user("delivered@resend.dev")
-        h2 = {"Authorization": f"Bearer {tok2}"}
-        requests.post(f"{API}/wishlist", json={"game_id": 989999003, "name": "TEST Disabled", "released": today}, headers=h2)
-        requests.put(f"{API}/me/reminders", json={"enabled": False}, headers=h2)
-
+        uid, _ = user
+        uid2 = seed_cron_users(user[1])
         rid = f"TEST_run_{uuid.uuid4().hex[:6]}"
-        hdr = {"Authorization": f"Bearer {SECRET}", "X-Webhook-Id": rid}
-        r = requests.post(f"{API}/cron/release-reminders", headers=hdr)
-        assert r.status_code == 200 and r.json()["status"] == "accepted" and r.json()["run_id"] == rid
-        dup = requests.post(f"{API}/cron/release-reminders", headers=hdr)
-        assert dup.status_code == 200 and dup.json()["status"] == "duplicate"
-        for _ in range(20):
-            st = mongo(f"var r=db.cron_runs.findOne({{run_id:'{rid}'}});print(r.status+'|'+r.emails_sent)")
-            if st.startswith("done"):
-                break
-            time.sleep(1)
+        r = trigger_cron(rid)
+        assert r.status_code == 200 and r.json() == {"status": "accepted", "run_id": rid}
+        assert trigger_cron(rid).json()["status"] == "duplicate"
+        st = wait_for_run(rid)
         assert st.startswith("done"), st
-        sent = mongo(f"print(db.reminders_sent.countDocuments({{user_id:'{uid}'}}))")
-        assert sent == "1", f"reminders_sent for user = {sent}"
-        assert mongo(f"print(db.reminders_sent.countDocuments({{user_id:'{uid2}'}}))") == "0"
-        assert mongo(f"print(db.reminders_sent.countDocuments({{game_id:989999002}}))") == "0"
-        # second run, different id -> no double send
-        rid2 = f"TEST_run_{uuid.uuid4().hex[:6]}"
-        r = requests.post(f"{API}/cron/release-reminders", headers={"Authorization": f"Bearer {SECRET}", "X-Webhook-Id": rid2})
-        assert r.json()["status"] == "accepted"
-        for _ in range(20):
-            st2 = mongo(f"var r=db.cron_runs.findOne({{run_id:'{rid2}'}});print(r.status+'|'+r.emails_sent)")
-            if st2.startswith("done"):
-                break
-            time.sleep(1)
-        print("run1", st, "run2", st2)
-        assert mongo(f"print(db.reminders_sent.countDocuments({{user_id:'{uid}'}}))") == "1"
-        assert st2.endswith("|0") or True  # other real users may exist; checked via reminders_sent above
+        assert sent_count(f"{{user_id:'{uid}'}}") == "1"
+        assert sent_count(f"{{user_id:'{uid2}'}}") == "0"
+        assert sent_count("{game_id:989999002}") == "0"
+
+    def test_second_run_does_not_resend(self, user):
+        uid = user[0]
+        rid = f"TEST_run_{uuid.uuid4().hex[:6]}"
+        assert trigger_cron(rid).json()["status"] == "accepted"
+        wait_for_run(rid)
+        assert sent_count(f"{{user_id:'{uid}'}}") == "1"

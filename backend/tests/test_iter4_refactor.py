@@ -10,25 +10,36 @@ sys.path.insert(0, "/app/backend")
 
 
 # ---------- GET /api/games/{id} shape ----------
-@pytest.mark.parametrize("gid", [3498, 41494])
-def test_game_detail_shape(gid):
-    r = requests.get(f"{API}/games/{gid}", timeout=60)
+REQUIRED_KEYS = ["id", "name", "genres", "platforms", "description", "developers", "publishers", "tags",
+                 "requirements", "stores", "screenshots", "trailers", "released", "background_image"]
+
+
+@pytest.fixture(scope="module", params=[3498, 41494])
+def detail(request):
+    r = requests.get(f"{API}/games/{request.param}", timeout=60)
     assert r.status_code == 200
-    d = r.json()
-    for k in ["id", "name", "genres", "platforms", "description", "developers", "publishers", "tags",
-              "requirements", "stores", "screenshots", "trailers", "released", "background_image"]:
-        assert k in d, k
+    return request.param, r.json()
+
+
+def test_game_detail_basic_fields(detail):
+    gid, d = detail
+    missing = [k for k in REQUIRED_KEYS if k not in d]
+    assert not missing, missing
     assert d["id"] == gid
-    assert isinstance(d["screenshots"], list) and d["screenshots"] and all(isinstance(s, str) and s.startswith("http") for s in d["screenshots"])
-    assert isinstance(d["stores"], list) and d["stores"]
-    assert all("name" in s and "url" in s and s["url"] for s in d["stores"])
-    assert isinstance(d["developers"], list) and d["developers"]
-    assert isinstance(d["trailers"], list)
-    for t in d["trailers"]:
-        assert "video" in t
-    req = d["requirements"]
-    assert req is None or isinstance(req, dict)
     assert "_id" not in d
+
+
+def test_game_detail_media(detail):
+    shots, trailers = detail[1]["screenshots"], detail[1]["trailers"]
+    assert shots and all(isinstance(s, str) and s.startswith("http") for s in shots)
+    assert isinstance(trailers, list) and all("video" in t for t in trailers)
+
+
+def test_game_detail_relationships(detail):
+    d = detail[1]
+    assert d["stores"] and all(s.get("name") and s.get("url") for s in d["stores"])
+    assert isinstance(d["developers"], list) and d["developers"]
+    assert d["requirements"] is None or isinstance(d["requirements"], dict)
 
 
 def test_game_detail_404():

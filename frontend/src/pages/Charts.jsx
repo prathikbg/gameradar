@@ -5,6 +5,7 @@ import useApi from "../hooks/useApi";
 import PlatformFilter from "../components/PlatformFilter";
 import { Metascore, PlatformTags, WishButton } from "../components/GameCard";
 import { fmtDate } from "../lib/api";
+import Skeletons from "../components/Skeletons";
 
 const KINDS = [
   { k: "trending", l: "Trending now" },
@@ -59,7 +60,7 @@ export default function Charts() {
       </div>
       <div className="mt-4"><PlatformFilter value={platform} onChange={setPlatform} /></div>
       <div className="mt-8 space-y-3" data-testid="chart-list">
-        {loading ? Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-800/60" />) :
+        {loading ? <Skeletons n={8} className="h-24" /> :
           error ? <p className="text-red-400">{error}</p> :
           list.length === 0 ? <p className="text-slate-400" data-testid="chart-empty">No games on this chart yet.</p> :
           list.map((g, i) => <Row key={g.id} g={g} i={i} max={max} />)}

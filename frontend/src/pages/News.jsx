@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ExternalLink, Newspaper } from "lucide-react";
 import useApi from "../hooks/useApi";
+import Skeletons from "../components/Skeletons";
 
 const PLATS = [
   { k: "all", l: "All platforms" }, { k: "playstation", l: "PlayStation" }, { k: "xbox", l: "Xbox" },
@@ -63,7 +64,7 @@ export default function News() {
         <Chips items={CATS} value={category} onChange={setCategory} prefix="news-category" active="border-[#00F0FF] bg-[#00F0FF] text-black" />
       </div>
       <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4" data-testid="news-grid">
-        {loading ? Array.from({ length: 8 }).map((_, i) => <div key={i} className="aspect-[4/3.4] animate-pulse rounded-xl bg-slate-800/60" />) :
+        {loading ? <Skeletons n={8} className="aspect-[4/3.4]" /> :
           error ? <p className="text-red-400">{error}</p> :
           items.map((n, i) => <Card key={n.id} n={n} i={i} big={i === 0} />)}
       </div>

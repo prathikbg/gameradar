@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Heart, Star } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { fmtDate, platformShort } from "../lib/api";
+import Skeletons from "./Skeletons";
 
 export const Metascore = ({ score, className = "" }) => {
   if (!score) return null;
@@ -58,6 +59,4 @@ export default function GameCard({ game, index = 0 }) {
   );
 }
 
-export const CardSkeletons = ({ n = 8 }) => (
-  <>{Array.from({ length: n }).map((_, i) => <div key={i} className="aspect-[4/3.6] animate-pulse rounded-xl bg-slate-800/60" />)}</>
-);
+export const CardSkeletons = ({ n = 8 }) => <Skeletons n={n} className="aspect-[4/3.6]" />;

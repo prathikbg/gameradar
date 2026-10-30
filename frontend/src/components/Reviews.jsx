@@ -14,7 +14,9 @@ const Stars = ({ value, onChange, size = "h-5 w-5" }) => (
   </div>
 );
 
-const Form = ({ gameId, mine, onSaved }) => {
+const isValidReview = (rating, text) => rating > 0 && text.trim().length >= 3;
+
+const useReviewForm = (gameId, mine, onSaved) => {
   const [rating, setRating] = useState(mine?.rating || 0);
   const [text, setText] = useState(mine?.text || "");
   const [saving, setSaving] = useState(false);
@@ -22,7 +24,7 @@ const Form = ({ gameId, mine, onSaved }) => {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!rating || text.trim().length < 3) { toast.error("Pick a star rating and write a few words"); return; }
+    if (!isValidReview(rating, text)) { toast.error("Pick a star rating and write a few words"); return; }
     setSaving(true);
     try {
       await api.post(`/games/${gameId}/reviews`, { rating, text });
@@ -36,20 +38,28 @@ const Form = ({ gameId, mine, onSaved }) => {
     try { await api.delete(`/games/${gameId}/reviews`); toast("Review deleted"); onSaved(); }
     catch { toast.error("Couldn't delete your review."); }
   };
+  return { rating, setRating, text, setText, saving, submit, remove };
+};
 
+const FormActions = ({ editing, saving, onDelete }) => (
+  <div className="flex gap-2">
+    <button data-testid="review-submit-btn" disabled={saving} className="rounded-full bg-[#FF9F1C] px-5 py-2 text-sm font-bold text-black transition-transform hover:scale-105 disabled:opacity-50">
+      {editing ? "Update review" : "Post review"}
+    </button>
+    {editing && <button type="button" data-testid="review-delete-btn" onClick={onDelete} className="flex items-center gap-1 rounded-full px-4 py-2 text-sm text-slate-400 hover:text-[#FF3860]"><Trash2 className="h-4 w-4" />Delete</button>}
+  </div>
+);
+
+const Form = ({ gameId, mine, onSaved }) => {
+  const f = useReviewForm(gameId, mine, onSaved);
   return (
-    <form onSubmit={submit} className="glass space-y-3 rounded-xl p-5" data-testid="review-form">
+    <form onSubmit={f.submit} className="glass space-y-3 rounded-xl p-5" data-testid="review-form">
       <p className="font-mono text-[10px] uppercase tracking-widest text-slate-500">{mine ? "Your review" : "Rate this game"}</p>
-      <Stars value={rating} onChange={setRating} size="h-7 w-7" />
-      <textarea data-testid="review-text-input" value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} rows={3}
+      <Stars value={f.rating} onChange={f.setRating} size="h-7 w-7" />
+      <textarea data-testid="review-text-input" value={f.text} onChange={(e) => f.setText(e.target.value)} maxLength={2000} rows={3}
         placeholder="What did you think? Gameplay, story, performance…"
         className="w-full rounded-lg border border-white/10 bg-black/30 p-3 text-sm outline-none focus:border-[#FF9F1C]/50" />
-      <div className="flex gap-2">
-        <button data-testid="review-submit-btn" disabled={saving} className="rounded-full bg-[#FF9F1C] px-5 py-2 text-sm font-bold text-black transition-transform hover:scale-105 disabled:opacity-50">
-          {mine ? "Update review" : "Post review"}
-        </button>
-        {mine && <button type="button" data-testid="review-delete-btn" onClick={remove} className="flex items-center gap-1 rounded-full px-4 py-2 text-sm text-slate-400 hover:text-[#FF3860]"><Trash2 className="h-4 w-4" />Delete</button>}
-      </div>
+      <FormActions editing={!!mine} saving={f.saving} onDelete={f.remove} />
     </form>
   );
 };
