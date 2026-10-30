@@ -1,0 +1,184 @@
+{
+  "project_name": "GameRadar",
+  "app_type": "hybrid_fullstack",
+  "archetype": "THE PERFORMANCE PRO + ELECTRIC TACTICAL",
+  "design_philosophy": {
+    "identity": "E1 Anti-AI Design Protocol: High-contrast, tactical cyber-gaming intelligence hub. Rejects bland generic white cards in favor of deep obsidian glass, neon amber/cyan telemetry lines, and dense grid layouts.",
+    "principles": [
+      "Tactical Minimalism: High density dark UI with translucent glass overlays and crisp 1px borders.",
+      "Cinematic Immersive Content: Hero sections with atmospheric background blur, dynamic video trailers, and high-impact key art.",
+      "Data-Rich Telemetry: Metacritic score dials, platform tags, release countdowns, and real-time trending charts.",
+      "Asymmetric Bento Grid: Mix dominant hero cards, tall stats panels, and micro grid pill badges."
+    ]
+  },
+  "typography": {
+    "font_family_heading": "Outfit, Barlow Condensed, sans-serif",
+    "font_family_body": "Plus Jakarta Sans, sans-serif",
+    "font_family_mono": "JetBrains Mono, monospace",
+    "fonts_to_import": [
+      "https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    ],
+    "scale": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-none uppercase",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight uppercase",
+      "h3": "text-xl sm:text-2xl font-bold tracking-normal",
+      "h4": "text-lg sm:text-xl font-semibold",
+      "body": "text-sm sm:text-base leading-relaxed text-slate-300",
+      "caption": "text-xs font-mono uppercase tracking-widest text-slate-400"
+    },
+    "forbidden_fonts": ["Inter for headings", "Space Grotesk"]
+  },
+  "colors": {
+    "theme_mode": "dark-first",
+    "background": {
+      "primary": "#08090C",
+      "secondary": "#0E1117",
+      "surface": "#141824",
+      "glass": "rgba(20, 24, 36, 0.75)"
+    },
+    "text": {
+      "primary": "#F8FAFC",
+      "secondary": "#94A3B8",
+      "muted": "#64748B",
+      "accent": "#FF9F1C"
+    },
+    "accents": {
+      "amber_primary": "#FF9F1C",
+      "cyan_electric": "#00F0FF",
+      "red_tactical": "#FF3860",
+      "green_metacritic": "#10B981",
+      "purple_xbox": "#107C41",
+      "blue_ps5": "#0070D1",
+      "red_switch": "#E60012"
+    },
+    "borders": {
+      "subtle": "rgba(255, 255, 255, 0.08)",
+      "active": "rgba(255, 159, 28, 0.4)",
+      "highlight": "rgba(0, 240, 255, 0.5)"
+    },
+    "forbidden_colors": ["#1B93A4", "#7351B7", "light pure white backgrounds for main layout"]
+  },
+  "spacing_and_layout": {
+    "container_padding": "px-4 sm:px-6 lg:px-12 max-w-7xl mx-auto",
+    "section_gap": "space-y-12 sm:space-y-16 lg:space-y-24",
+    "bento_grid_hero": "grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6",
+    "bento_spans": {
+      "hero_card": "col-span-12 lg:col-span-8 row-span-2",
+      "trending_chart": "col-span-12 md:col-span-6 lg:col-span-4",
+      "platform_badge_strip": "col-span-12 md:col-span-6 lg:col-span-4",
+      "upcoming_widget": "col-span-12 lg:col-span-8"
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": "backdrop-blur-xl bg-[#141824]/75 border border-white/10 shadow-2xl shadow-black/60",
+    "tactical_border": "relative before:absolute before:top-0 before:left-0 before:w-2 before:h-2 before:border-t-2 before:border-l-2 before:border-amber-500",
+    "scanline_effect": "bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%)] bg-[length:100%_4px]",
+    "shimmer_loader": "animate-pulse bg-slate-800/80 rounded-lg",
+    "glow_box": "shadow-[0_0_20px_rgba(255,159,28,0.15)]"
+  },
+  "navigation_and_header": {
+    "structure": "Sticky frosted header with logo, search trigger, main nav tabs, platform fast-filters, AI guide shortcut button, and Google Auth / Wishlist badge.",
+    "links": [
+      {"label": "Home", "path": "/", "test_id": "nav-link-home"},
+      {"label": "New Releases", "path": "/releases", "test_id": "nav-link-releases"},
+      {"label": "Trending Charts", "path": "/charts", "test_id": "nav-link-charts"},
+      {"label": "Upcoming Calendar", "path": "/calendar", "test_id": "nav-link-calendar"},
+      {"label": "AI Game Assistant", "path": "/ai-guide", "test_id": "nav-link-ai-guide"},
+      {"label": "Wishlist", "path": "/wishlist", "test_id": "nav-link-wishlist"}
+    ],
+    "header_css": "sticky top-0 z-50 backdrop-blur-xl bg-[#08090C]/85 border-b border-white/10 px-4 sm:px-8 py-3.5"
+  },
+  "key_features_and_pages": [
+    {
+      "page": "Home",
+      "description": "Featured game carousel with live video/backdrop, platform filter chips (PS5, Xbox, PC, Switch), trending top 10 list, recent game drop cards."
+    },
+    {
+      "page": "New Releases & Platform Filters",
+      "description": "Filter games by platform (PlayStation 5, Xbox Series X, PC, Nintendo Switch), sorting by release date, rating, or popularity."
+    },
+    {
+      "page": "Trending & Most Played Charts",
+      "description": "Leaderboards of played games, rating breakdowns, player community metrics, metacritic score highlight."
+    },
+    {
+      "page": "Game Detail Page",
+      "description": "Hero banner key art, trailer video launcher modal/embed, multi-screenshot viewer lightbox, metacritic badge, tags, store buy links (Steam, PlayStation Store, Xbox Store), system specs, user reviews."
+    },
+    {
+      "page": "Upcoming Release Calendar",
+      "description": "Timeline grouped by month and week, countdown timers for major titles, one-click add to wishlist / set reminder."
+    },
+    {
+      "page": "AI Game Guide Assistant Chat",
+      "description": "Interactive AI companion ('Radar AI') for game advice, boss strategy, system specs check, personalized recommendations, and lore answers."
+    },
+    {
+      "page": "Wishlist & User Profile",
+      "description": "Emergent Google Sign-In integration, saved wishlist games, customized notification preferences."
+    }
+  ],
+  "media_assets": {
+    "hero_backgrounds": [
+      {
+        "url": "https://images.unsplash.com/photo-1542751371-adc38448a05e?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "category": "hero",
+        "alt": "Esports gaming arena keyboard neon lights setup"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1593305841991-05c297ba4575?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "category": "hero",
+        "alt": "High end gaming screen display setup"
+      }
+    ],
+    "gaming_setups": [
+      {
+        "url": "https://images.unsplash.com/photo-1585620385456-4759f9b5c7d9?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "category": "controller",
+        "alt": "Xbox controller with neon light illumination"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1552820728-8b83bb6b773f?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "category": "controller",
+        "alt": "PlayStation controller tactical duel lighting"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1696710257827-75e2e5954059?crop=entropy&cs=srgb&fm=jpg&q=85",
+        "category": "pc_rig",
+        "alt": "Futuristic gaming tower and mechanical keyboard"
+      }
+    ]
+  },
+  "testing_requirements": {
+    "mandatory_data_testid": [
+      "nav-brand-logo",
+      "nav-link-home",
+      "nav-link-releases",
+      "nav-link-charts",
+      "nav-link-calendar",
+      "nav-link-ai-guide",
+      "nav-link-wishlist",
+      "google-login-button",
+      "user-avatar-button",
+      "global-search-input",
+      "platform-filter-ps5",
+      "platform-filter-xbox",
+      "platform-filter-pc",
+      "platform-filter-switch",
+      "game-card-{id}",
+      "wishlist-toggle-btn-{id}",
+      "game-detail-trailer-play-btn",
+      "ai-chat-input",
+      "ai-chat-send-btn",
+      "calendar-month-filter"
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Always import fonts defined in typography.fonts_to_import in index.html or root CSS.",
+    "Use RAWG Live API (https://api.rawg.io/api/games) with a fallback key or proxy server in backend, and provide rich fallback mock data for smooth offline/instant loading.",
+    "Integrate Google Auth via Emergent overlay script (@emergentbase/overlay) and backend auth endpoints.",
+    "Ensure all interactive elements have data-testid attributes.",
+    "Do NOT use pure white card backgrounds. Maintain dark mode with slate/obsidian containers.",
+    "Use Sonner for toast notifications when user adds/removes wishlist items or triggers action."
+  ]
+}

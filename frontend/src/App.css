@@ -1,0 +1,58 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap");
+
+body {
+  background: #08090c;
+  color: #f8fafc;
+  font-family: "Plus Jakarta Sans", sans-serif;
+}
+.font-display { font-family: "Outfit", sans-serif; }
+.font-mono { font-family: "JetBrains Mono", monospace; }
+
+::selection { background: #ff9f1c; color: #08090c; }
+
+.grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 100;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.glass {
+  background: rgba(20, 24, 36, 0.75);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.corner { position: relative; }
+.corner::before, .corner::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  pointer-events: none;
+}
+.corner::before { top: -1px; left: -1px; border-top: 2px solid #ff9f1c; border-left: 2px solid #ff9f1c; }
+.corner::after { bottom: -1px; right: -1px; border-bottom: 2px solid #00f0ff; border-right: 2px solid #00f0ff; }
+
+.scanlines {
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+  background-size: 100% 4px;
+}
+
+.fade-up { animation: fadeUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+.prose-ai p { margin: 0.35rem 0; }
+.prose-ai ul { list-style: disc; padding-left: 1.2rem; margin: 0.35rem 0; }
+.prose-ai ol { list-style: decimal; padding-left: 1.2rem; margin: 0.35rem 0; }
+.prose-ai strong { color: #ff9f1c; }
+.prose-ai h1, .prose-ai h2, .prose-ai h3 { font-family: "Outfit", sans-serif; font-weight: 700; margin: 0.6rem 0 0.3rem; }
