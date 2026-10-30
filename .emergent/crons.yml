@@ -1,0 +1,8 @@
+crons:
+  - name: release-reminders
+    description: "Emails users on release day for games on their GameRadar wishlist (9am UTC)"
+    cron: "0 9 * * *"
+    endpoint: "{{BASE_URL}}/api/cron/release-reminders"
+    method: POST
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    enabled: true

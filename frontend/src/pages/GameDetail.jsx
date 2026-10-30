@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Play, ExternalLink, Star, Clock, Users, Bot } from "lucide-react";
+import { Play, ExternalLink, Star, Clock, Users, Bot, Scale } from "lucide-react";
 import useApi from "../hooks/useApi";
 import { Metascore, WishButton } from "../components/GameCard";
+import PriceBox from "../components/PriceBox";
+import Reviews from "../components/Reviews";
 import { Dialog, DialogContent, DialogTitle } from "../components/ui/dialog";
 import { fmtDate } from "../lib/api";
 
@@ -55,6 +57,10 @@ export default function GameDetail() {
                 className="flex items-center gap-2 rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold transition-colors hover:border-[#00F0FF] hover:text-[#00F0FF]">
                 <Bot className="h-4 w-4" /> Ask Radar AI
               </Link>
+              <Link to={`/compare?a=${g.id}`} data-testid="game-detail-compare"
+                className="flex items-center gap-2 rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold transition-colors hover:border-[#FF9F1C] hover:text-[#FF9F1C]">
+                <Scale className="h-4 w-4" /> Compare
+              </Link>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 self-end lg:col-span-5">
@@ -95,8 +101,10 @@ export default function GameDetail() {
               </div>
             </section>
           )}
+          <Reviews gameId={g.id} />
         </div>
         <aside className="space-y-6 lg:col-span-4">
+          <PriceBox gameId={g.id} />
           <div className="glass corner space-y-4 rounded-xl p-5">
             <Info label="Released" items={[fmtDate(g.released)]} />
             <Info label="Platforms" items={g.platforms} />

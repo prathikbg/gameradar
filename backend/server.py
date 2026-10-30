@@ -1,20 +1,25 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import re
+import hmac
 import json
 import time
 import logging
 import uuid
 import asyncio
+from html import escape
 from pathlib import Path
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime, timezone, timedelta, date
 import httpx
 from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
+from news import get_news
+from email_service import send_email
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -320,6 +325,178 @@ async def ai_chat(body: ChatIn):
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+# ---------- News ----------
+@api.get("/news")
+async def news(platform: Optional[str] = None, category: Optional[str] = None, limit: int = 60):
+    items = await get_news()
+    if platform and platform != "all":
+        items = [i for i in items if platform in i["platforms"]]
+    if category and category != "all":
+        items = [i for i in items if i["category"] == category]
+    return items[:limit]
+
+
+# ---------- Reviews ----------
+class ReviewIn(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    text: str = Field(min_length=3, max_length=2000)
+
+
+@api.get("/games/{game_id}/reviews")
+async def get_reviews(game_id: int):
+    items = await db.reviews.find({"game_id": game_id}, {"_id": 0}).sort("updated_at", -1).to_list(200)
+    avg = round(sum(r["rating"] for r in items) / len(items), 2) if items else None
+    return {"count": len(items), "average": avg, "reviews": items}
+
+
+@api.post("/games/{game_id}/reviews")
+async def upsert_review(game_id: int, body: ReviewIn, request: Request):
+    user = await current_user(request)
+    now = datetime.now(timezone.utc).isoformat()
+    existing = await db.reviews.find_one({"game_id": game_id, "user_id": user["user_id"]}, {"_id": 0})
+    doc = {"game_id": game_id, "user_id": user["user_id"], "user_name": user["name"], "user_picture": user.get("picture"),
+           "rating": body.rating, "text": body.text.strip(), "updated_at": now,
+           "review_id": existing["review_id"] if existing else f"rev_{uuid.uuid4().hex[:12]}",
+           "created_at": existing["created_at"] if existing else now}
+    await db.reviews.update_one({"game_id": game_id, "user_id": user["user_id"]}, {"$set": doc}, upsert=True)
+    return doc
+
+
+@api.delete("/games/{game_id}/reviews")
+async def delete_review(game_id: int, request: Request):
+    user = await current_user(request)
+    await db.reviews.delete_one({"game_id": game_id, "user_id": user["user_id"]})
+    return {"ok": True}
+
+
+# ---------- PC prices (CheapShark) ----------
+CHEAPSHARK = "https://www.cheapshark.com/api/1.0"
+CS_HEADERS = {"User-Agent": "GameRadar/1.0 (game info hub)"}
+
+
+async def cheapshark(path: str, params: dict):
+    key = "cs" + path + json.dumps(params, sort_keys=True)
+    hit = _cache.get(key)
+    if hit and time.time() - hit[0] < CACHE_TTL:
+        return hit[1]
+    r = await http.get(f"{CHEAPSHARK}{path}", params=params, headers=CS_HEADERS)
+    r.raise_for_status()
+    data = r.json()
+    _cache[key] = (time.time(), data)
+    return data
+
+
+@api.get("/games/{game_id}/price")
+async def game_price(game_id: str):
+    detail = await rawg(f"/games/{game_id}")
+    name = detail.get("name", "")
+    try:
+        matches = await cheapshark("/games", {"title": name, "limit": 10})
+        if not matches:
+            return {"available": False}
+        norm = lambda s: re.sub(r"[^a-z0-9]", "", s.lower())
+        match = next((m for m in matches if norm(m["external"]) == norm(name)), None)
+        if not match:
+            return {"available": False}
+        info, stores = await asyncio.gather(cheapshark("/games", {"id": match["gameID"]}), cheapshark("/stores", {}))
+        store_names = {s["storeID"]: s["storeName"] for s in stores}
+        deals = sorted(info.get("deals", []), key=lambda d: float(d["price"]))
+        if not deals:
+            return {"available": False}
+        best = deals[0]
+        return {
+            "available": True, "title": match["external"], "price": float(best["price"]),
+            "retail": float(best["retailPrice"]), "savings": round(float(best["savings"])),
+            "store": store_names.get(best["storeID"], "PC store"),
+            "url": f"https://www.cheapshark.com/redirect?dealID={best['dealID']}",
+            "cheapest_ever": float((info.get("cheapestPriceEver") or {}).get("price") or 0) or None,
+            "deals": [{"store": store_names.get(d["storeID"], "Store"), "price": float(d["price"]),
+                       "url": f"https://www.cheapshark.com/redirect?dealID={d['dealID']}"} for d in deals[:5]],
+        }
+    except httpx.HTTPError:
+        return {"available": False}
+
+
+# ---------- Release reminders ----------
+class ReminderPref(BaseModel):
+    enabled: bool
+
+
+@api.get("/me/reminders")
+async def get_reminders(request: Request):
+    user = await current_user(request)
+    return {"enabled": user.get("reminders_enabled", True), "email": user["email"]}
+
+
+@api.put("/me/reminders")
+async def set_reminders(body: ReminderPref, request: Request):
+    user = await current_user(request)
+    await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"reminders_enabled": body.enabled}})
+    return {"enabled": body.enabled}
+
+
+def reminder_html(name: str, games: list):
+    rows = "".join(
+        f'<tr><td style="padding:10px 0;border-bottom:1px solid #222;font-size:16px;color:#f8fafc">'
+        f'<strong>{escape(g["name"])}</strong><br><span style="font-size:12px;color:#94a3b8">'
+        f'{escape(", ".join(g.get("platforms", [])[:5]))}</span></td></tr>' for g in games)
+    return (f'<table role="presentation" width="100%" style="background:#08090c"><tr><td style="padding:28px;'
+            f'font-family:Arial,sans-serif;color:#f8fafc">'
+            f'<p style="font-size:12px;letter-spacing:3px;color:#ff9f1c;margin:0">GAMERADAR · RELEASE DAY</p>'
+            f'<p style="font-size:16px">Hi {escape(name)}, good news — a game on your wishlist is out today:</p>'
+            f'<table role="presentation" width="100%">{rows}</table>'
+            f'<p style="font-size:14px;color:#cbd5e1">Open GameRadar to see trailers, reviews and the best PC price.</p>'
+            f'<p style="font-size:11px;color:#64748b">Sent by {escape(os.environ["EMAIL_FROM_NAME"])} because you turned on '
+            f'release reminders. You can switch them off on your Wishlist page. We never ask for your password or card details by email.</p>'
+            f'</td></tr></table>')
+
+
+async def run_release_reminders(run_id: str):
+    today = date.today().isoformat()
+    items = await db.wishlist.find({"released": today}, {"_id": 0}).to_list(5000)
+    by_user: dict = {}
+    for it in items:
+        if await db.reminders_sent.find_one({"user_id": it["user_id"], "game_id": it["game_id"]}):
+            continue
+        by_user.setdefault(it["user_id"], []).append(it)
+    sent = 0
+    for user_id, games in by_user.items():
+        user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+        if not user or user.get("reminders_enabled", True) is False:
+            continue
+        subject = f"Out today: {games[0]['name']}" + (f" + {len(games) - 1} more" if len(games) > 1 else "")
+        try:
+            await send_email(to=user["email"], subject=subject, html=reminder_html(user["name"], games))
+        except Exception:
+            logging.exception("Reminder email failed")
+            continue
+        sent += 1
+        await db.reminders_sent.insert_many([{"user_id": user_id, "game_id": g["game_id"], "run_id": run_id,
+                                              "sent_at": datetime.now(timezone.utc).isoformat()} for g in games])
+    await db.cron_runs.update_one({"run_id": run_id}, {"$set": {"status": "done", "emails_sent": sent}})
+
+
+@api.post("/cron/release-reminders")
+async def cron_release_reminders(request: Request, background: BackgroundTasks):
+    # Cron endpoints must ack 2xx immediately; enqueue/background the actual work.
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer ") or not hmac.compare_digest(auth[7:], os.environ["WEBHOOK_CRON_SECRET"]):
+        raise HTTPException(401, "Unauthorized")
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        raise HTTPException(400, "Invalid body")
+    run_id = request.headers.get("X-Webhook-Id") or body.get("run_id") or f"manual_{uuid.uuid4().hex[:8]}"
+    if await db.cron_runs.find_one({"run_id": run_id}):
+        return {"status": "duplicate"}
+    await db.cron_runs.insert_one({"run_id": run_id, "job": "release-reminders", "status": "queued",
+                                   "created_at": datetime.now(timezone.utc).isoformat()})
+    background.add_task(run_release_reminders, run_id)
+    return {"status": "accepted", "run_id": run_id}
 
 
 app.include_router(api)

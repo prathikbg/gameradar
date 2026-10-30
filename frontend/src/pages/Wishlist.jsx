@@ -3,6 +3,7 @@ import { Heart } from "lucide-react";
 import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import GameCard, { CardSkeletons } from "../components/GameCard";
+import ReminderToggle from "../components/ReminderToggle";
 
 export default function Wishlist() {
   const { user, loading, login, wishIds } = useAuth();
@@ -31,6 +32,7 @@ export default function Wishlist() {
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-12">
       <p className="font-mono text-xs uppercase tracking-[0.25em] text-[#00F0FF]">Hey {user.name?.split(" ")[0]}</p>
       <h1 className="font-display mt-2 text-4xl font-black uppercase tracking-tight sm:text-5xl lg:text-6xl">Wishlist <span className="text-slate-600">{list.length}</span></h1>
+      <ReminderToggle />
       <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4" data-testid="wishlist-grid">
         {!items ? <CardSkeletons n={4} /> : list.map((g, i) => <GameCard key={g.id} game={g} index={i} />)}
       </div>

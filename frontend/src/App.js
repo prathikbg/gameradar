@@ -13,6 +13,8 @@ import AIGuide from "./pages/AIGuide";
 import Wishlist from "./pages/Wishlist";
 import Search from "./pages/Search";
 import AuthCallback from "./pages/AuthCallback";
+import News from "./pages/News";
+import Compare from "./pages/Compare";
 
 function AppRouter() {
   const location = useLocation();
@@ -30,6 +32,8 @@ function AppRouter() {
           <Route path="/ai-guide" element={<AIGuide />} />
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/search" element={<Search />} />
+          <Route path="/news" element={<News />} />
+          <Route path="/compare" element={<Compare />} />
         </Routes>
       </main>
       {location.pathname !== "/ai-guide" && <Footer />}

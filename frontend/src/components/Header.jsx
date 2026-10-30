@@ -9,6 +9,8 @@ const LINKS = [
   { label: "New Releases", to: "/releases", id: "releases" },
   { label: "Charts", to: "/charts", id: "charts" },
   { label: "Calendar", to: "/calendar", id: "calendar" },
+  { label: "News", to: "/news", id: "news" },
+  { label: "Compare", to: "/compare", id: "compare" },
   { label: "AI Guide", to: "/ai-guide", id: "ai-guide" },
   { label: "Wishlist", to: "/wishlist", id: "wishlist" },
 ];
@@ -55,7 +57,7 @@ export default function Header() {
           <Radar className="h-6 w-6 text-[#FF9F1C]" />
           <span className="font-display text-xl font-black uppercase tracking-tight">Game<span className="text-[#00F0FF]">Radar</span></span>
         </Link>
-        <nav className="ml-4 hidden items-center lg:flex">
+        <nav className="ml-4 hidden items-center xl:flex">
           {LINKS.map((l) => (
             <NavLink key={l.id} to={l.to} end={l.to === "/"} data-testid={`nav-link-${l.id}`} className={linkCls}>{l.label}</NavLink>
           ))}
@@ -69,12 +71,12 @@ export default function Header() {
           <Bot className="h-4 w-4" />
         </Link>
         <UserArea />
-        <button data-testid="mobile-menu-toggle" className="lg:hidden" onClick={() => setOpen(!open)}>
+        <button data-testid="mobile-menu-toggle" className="xl:hidden" onClick={() => setOpen(!open)}>
           {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
         </button>
       </div>
       {open && (
-        <div className="border-t border-white/10 px-4 pb-4 lg:hidden" data-testid="mobile-menu">
+        <div className="border-t border-white/10 px-4 pb-4 xl:hidden" data-testid="mobile-menu">
           <form onSubmit={submit} className="my-3 flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2">
             <Search className="h-4 w-4 text-slate-500" />
             <input data-testid="mobile-search-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search games..."
