@@ -24,45 +24,63 @@ export default function AIGuide() {
   const [busy, setBusy] = useState(false);
   const [params, setParams] = useSearchParams();
   const endRef = useRef(null);
+  const busyRef = useRef(false);
+  const initQ = useRef(params.get("q"));
 
-  useEffect(() => { api.get(`/ai/history/${sid}`).then(({ data }) => setMsgs(data)); }, [sid]);
+  useEffect(() => {
+    let alive = true;
+    api.get(`/ai/history/${sid}`).then(({ data }) => {
+      if (!alive) return;
+      setMsgs(data);
+      const q = initQ.current;
+      if (q) { initQ.current = null; setParams({}, { replace: true }); send(q); }
+    });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sid]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+
+  const append = (key, add) =>
+    setMsgs((m) => m.map((x) => (x.key === key ? { ...x, content: x.content + add } : x)));
 
   const send = async (text) => {
     const t = (text ?? input).trim();
-    if (!t || busy) return;
+    if (!t || busyRef.current) return;
+    busyRef.current = true;
     setInput("");
     setBusy(true);
-    setMsgs((m) => [...m, { role: "user", content: t }, { role: "assistant", content: "" }]);
-    const res = await fetch(`${API}/ai/chat`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sid, message: t }),
-    });
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    let buf = "";
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      const parts = buf.split("\n\n");
-      buf = parts.pop();
-      for (const p of parts) {
-        const d = p.replace(/^data: /, "");
-        if (d === "[DONE]") continue;
-        const ev = JSON.parse(d);
-        const add = ev.delta || (ev.error ? "\n\n_Sorry, Radar AI hit an error. Please try again._" : "");
-        setMsgs((m) => { const c = [...m]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + add }; return c; });
+    const key = Date.now();
+    setMsgs((m) => [...m, { role: "user", content: t }, { role: "assistant", content: "", key }]);
+    try {
+      const res = await fetch(`${API}/ai/chat`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sid, message: t }),
+      });
+      if (!res.ok) throw new Error("bad status");
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const parts = buf.split("\n\n");
+        buf = parts.pop();
+        for (const p of parts) {
+          const d = p.replace(/^data: /, "").trim();
+          if (!d || d === "[DONE]") continue;
+          const ev = JSON.parse(d);
+          if (ev.error) throw new Error(ev.error);
+          append(key, ev.delta || "");
+        }
       }
+    } catch {
+      append(key, "\n\n_Sorry, Radar AI hit an error. Please try again._");
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
     }
-    setBusy(false);
   };
-
-  useEffect(() => {
-    const q = params.get("q");
-    if (q) { setParams({}, { replace: true }); send(q); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const reset = () => { const s = crypto.randomUUID(); localStorage.setItem("radar_ai_sid", s); setSid(s); setMsgs([]); };
 

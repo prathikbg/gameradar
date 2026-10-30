@@ -62,7 +62,7 @@ export default function CalendarPage() {
           shown.map((k) => (
             <section key={k} data-testid={`calendar-group-${k}`}>
               <h2 className="font-display mb-4 flex items-center gap-3 text-2xl font-extrabold uppercase">
-                {monthLabel(k)} <span className="font-mono text-xs text-slate-500">{groups[k].length} games</span>
+                {monthLabel(k)} <span className="font-mono text-xs text-slate-500">{groups[k].length} {groups[k].length === 1 ? "game" : "games"}</span>
               </h2>
               <div className="space-y-3">{groups[k].map((g) => <Item key={g.id} g={g} />)}</div>
             </section>

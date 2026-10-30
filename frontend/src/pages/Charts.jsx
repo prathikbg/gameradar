@@ -61,6 +61,7 @@ export default function Charts() {
       <div className="mt-8 space-y-3" data-testid="chart-list">
         {loading ? Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-slate-800/60" />) :
           error ? <p className="text-red-400">{error}</p> :
+          list.length === 0 ? <p className="text-slate-400" data-testid="chart-empty">No games on this chart yet.</p> :
           list.map((g, i) => <Row key={g.id} g={g} i={i} max={max} />)}
       </div>
     </div>

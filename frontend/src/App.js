@@ -32,7 +32,7 @@ function AppRouter() {
           <Route path="/search" element={<Search />} />
         </Routes>
       </main>
-      <Footer />
+      {location.pathname !== "/ai-guide" && <Footer />}
     </>
   );
 }

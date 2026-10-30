@@ -108,7 +108,12 @@ async def charts(kind: str = "trending", platform: Optional[str] = None):
     if kind == "alltime":
         params = {"ordering": "-added"}
     elif kind == "toprated":
-        params = {"ordering": "-metacritic", "dates": date_range(days_back=365), "metacritic": "1,100"}
+        data = await rawg("/games", {"ordering": "-added", "dates": date_range(days_back=365),
+                                     "platforms": platform_param(platform), "page_size": 40})
+        res = page(data)
+        res["results"] = sorted([g for g in res["results"] if (g["ratings_count"] or 0) >= 5],
+                                key=lambda g: -(g["rating"] or 0))[:20]
+        return res
     else:
         params = {"ordering": "-added", "dates": date_range(days_back=180)}
     data = await rawg("/games", {**params, "platforms": platform_param(platform), "page_size": 20})
@@ -224,6 +229,9 @@ async def me(request: Request):
 @api.post("/auth/logout")
 async def logout(request: Request, response: Response):
     token = request.cookies.get("session_token")
+    auth = request.headers.get("Authorization", "")
+    if not token and auth.startswith("Bearer "):
+        token = auth[7:]
     if token:
         await db.user_sessions.delete_one({"session_token": token})
     response.delete_cookie("session_token", path="/", secure=True, samesite="none")

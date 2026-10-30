@@ -1,0 +1,45 @@
+{
+  "summary": "First full E2E run of GameRadar. Backend: 23/24 pytest pass (RAWG games/new/charts/upcoming/detail/genres/search, auth 401s, wishlist CRUD+upsert, AI SSE stream + history). Frontend: Home hero/top6/new releases chips/coming soon, Releases filter/sort/load more, Charts tabs+platform filter, Calendar month groups+month filter+platform filter, Game detail (title, screenshot dialog, trailer dialog, stores, ask AI), search + empty state, AI guide (suggestions, typed send streaming, history persists on reload, New chat reset), auth (unauth toast, cookie session, heart add/remove, wishlist page, logout), mobile menu all verified. Two real bugs: Critics' Top chart always empty, and AI Guide ?q= prefill (from 'Ask Radar AI') produces garbled duplicated reply streamed into the user bubble.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "GET /api/games/charts?kind=toprated", "issue": "Always returns 0 results. RAWG has almost no metacritic scores for games of the last 365 days (metacritic=1,100 + dates last 12mo -> count 0 on RAWG directly; even all of 2024 returns only 2). Charts 'Critics' top (12 mo)' tab is blank. Fix: use ordering=-rating with a ratings_count floor / widen window (e.g. 2-3 yrs) or fall back to -rating when metacritic result empty.", "priority": "HIGH"}
+    ],
+    "minor": [
+      {"endpoint": "POST /api/auth/logout", "issue": "Only reads session from cookie; Bearer-token sessions are not deleted on logout."},
+      {"endpoint": "POST /api/ai/chat", "issue": "No max length validation on message/session_id; history endpoint unauthenticated (anyone with a session_id can read chat) - acceptable for MVP."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AIGuide.jsx (?q= prefill from game-detail-ask-ai)", "issue": "Reply is garbled/interleaved and appended INTO the user bubble (no assistant bubble). Observed: ['ai-msg-user-0: Tell me about Portal 2...', 'ai-msg-user-1: Tell me about Portal 2...Portal 2 (Portal 2 (Valve, 2011) is a witt...']. RCA: (1) React.StrictMode double-invokes the mount effect so send(q) fires twice (busy guard is a stale closure) -> two concurrent streams writing into same message; (2) the history effect api.get(/ai/history/sid).then(setMsgs(data)) resolves AFTER send() pushed the optimistic user+assistant placeholder and overwrites msgs, so deltas update c[c.length-1] which is now the user message (or undefined if history empty -> potential crash).", "selector": "[data-testid^='ai-msg-user-']", "priority": "HIGH"},
+      {"component": "Charts.jsx", "issue": "No empty state when list is empty (toprated shows blank area).", "selector": "[data-testid='chart-list']", "priority": "MEDIUM"},
+      {"component": "AIGuide.jsx send()", "issue": "fetch/stream has no try/catch; network error or non-200 leaves busy=true forever and JSON.parse on malformed chunk throws.", "selector": "[data-testid='ai-chat-send-btn']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Calendar", "issues": ["Group count label says '1 GAMES' (pluralization)"]},
+      {"screen": "AI Guide", "issues": ["Chat container is h-[calc(100vh-64px)] but footer renders below, so page scrolls and input isn't pinned at viewport bottom"]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_gameradar_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Fix /api/games/charts kind=toprated returning empty (RAWG lacks recent metacritic data) - use rating-based ordering or fallback",
+    "Fix AIGuide prefill: guard the ?q= effect with a useRef so it runs once; don't let history fetch overwrite in-flight messages (skip/merge if busy or load history before sending); update the assistant message by index captured at send time",
+    "Wrap AIGuide send() in try/catch/finally to reset busy and show error",
+    "Add empty state to Charts list"
+  ],
+  "critical_code_review_comments": [
+    "AIGuide: optimistic state + async history load race (see RCA)",
+    "Trailer <video> got MediaError 4 in headless Chromium (Steam mp4 H.264, URL returns 200 video/mp4) - likely test-browser codec limitation, not verified in real browser",
+    "logout uses cookie only; consider also Bearer",
+    "AuthContext.toggleWish has no error handling (failed API -> unhandled rejection, no toast)"
+  ],
+  "updated_files": ["/app/backend/tests/test_gameradar_api.py"],
+  "success_rate": {"backend": "96% (23/24)", "frontend": "90%"},
+  "test_credentials": "Emergent Google auth; test user/session created via mongosh per /app/auth_testing.md (fixture in test file does this automatically). /app/memory/test_credentials.md has no static creds (expected).",
+  "seed_data_creation": "Created TEST_ users/sessions/wishlist/ai_messages; cleaned up after run",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Container clock is Oct 2026 (RAWG data aligns). Run: REACT_APP_BACKEND_URL=... pytest /app/backend/tests/test_gameradar_api.py. Uncached RAWG calls can take >3s; use waits of 5-6s in UI tests. calendar-month-filter is a container; month buttons are its child buttons (testid calendar-month-YYYY-MM). Retest AI prefill via /ai-guide?q=... and Critics' top chart.",
+  "rca of the issue": "AI prefill: StrictMode double effect + history-load overwrite race in AIGuide.jsx lines 28 and 61-65. Toprated: RAWG metacritic field is null for nearly all recent games, so metacritic=1,100 filter within last 365 days yields count 0."
+}
