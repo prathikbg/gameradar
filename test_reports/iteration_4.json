@@ -1,0 +1,34 @@
+{
+  "summary": "Iteration 4: refactor regression pass. Backend: 52/52 pytest pass (48 regression + 4 new in test_iter4_refactor.py). GET /api/games/{id} shape is unchanged for 3498 and 41494: screenshots are a list of URL strings, stores have name+url, developers, trailers and requirements are present, an unknown id gives 404. The split email guard rejects forms, credential asks, http, shorteners, IP hosts, userinfo and mismatched anchor text, and accepts a valid email. Cron reminder sends once to delivered@resend.dev (Email API 202). The first full run failed 1 cron test. That was a test-data problem, not an app bug: the new refresh_release_dates() reloads wishlist dates from RAWG, and the fake ids 990001-3 are real RAWG games (2024-10-02), so their 'today' date was overwritten. I changed the test to use ids that don't exist on RAWG (989999001-3). Frontend: AI Guide: 4 suggestions; a typed message streams into exactly one assistant bubble; send stays disabled while streaming even with text typed; history persists on reload; New chat resets to the suggestions; a suggestion click sends. XSS: a reply echoing <img src=x onerror=alert(1)> and <script> renders as escaped text, with 0 img/script elements, no dialog and no page error. Bold, ol and ul still render. Ask Radar AI from /game/3498 gives exactly 1 user + 1 assistant bubble and the URL changes to /ai-guide with no ?q. Game detail (3498, 41494): title, genres, trailer dialog with video (3498; 41494 has no trailers and falls back to a YouTube link), wishlist heart add/remove (checked on /wishlist), Ask AI, Compare (links to /compare?a=3498), stats, 6 screenshots each opening the dialog, About read more/less, 2 PC requirement blocks, 5 store links, 12 tags, facts. Price box shows $17.99 with GOG/Humble/Steam deals for Cyberpunk; GTA V shows the 'No PC deals' state (CheapShark returns available:false). Reviews signed in: post, edit (upsert, no duplicate, summary 4.0 then 2.0) and delete all refresh the list. useApi: Home platform filter, Releases platform/sort/load more (24 to 48), Charts tab/platform, Calendar platform, Search via header, News platform/category each fire the correct new request and update. No page errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "run_release_reminders / refresh_release_dates", "issue": "Makes one sequential RAWG detail call per distinct wishlist game_id that has released >= 7 days ago or null. This includes every far-future game (e.g. 2099), so the cron gets slower and costs more RAWG quota as wishlists grow. Consider limiting it to dates within about ±14 days of today plus null, and use asyncio.gather with a semaphore"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Releases filter/sort", "issue": "Releases.jsx effect has no alive/abort guard (unlike useApi). Quickly switching platform or sort can let a late response overwrite or append stale results", "affected_selectors": ["releases-grid", "platform-filter-*", "releases-sort-select"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_iter4_refactor.py", "/app/backend/tests/test_iter3_features.py", "/app/backend/tests/test_gameradar_api.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "Optional: limit the refresh_release_dates scope and parallelize it",
+    "Optional: add a stale-response guard in the Releases.jsx effect"
+  ],
+  "critical_code_review_comments": [
+    "Markdown.jsx: escaping plus DOMPurify with an allow-list (p/ul/ol/li/h3/strong/em, no attrs) is sound",
+    "useRadarChat: if the user clicks New chat during a stream, the old stream keeps busy=true until it finishes, and its deltas go to an id that is no longer in msgs (harmless, but send stays disabled briefly). Consider an AbortController on reset",
+    "useApi keeps the previous data while loading new params; pages show skeletons via loading so this is OK"
+  ],
+  "updated_files": ["/app/backend/tests/test_iter3_features.py (fake game ids changed to 989999001-3, which don't exist on RAWG)", "/app/backend/tests/test_iter4_refactor.py (new)"],
+  "success_rate": {"backend": "100% (52/52)", "frontend": "100%"},
+  "test_credentials": "Emergent Google auth; test user/session created via mongosh (TEST_u_fe4 / cookie session_token), email delivered@resend.dev; cron uses WEBHOOK_CRON_SECRET from backend/.env",
+  "seed_data_creation": "TEST_ users, sessions, reviews, wishlist, reminders_sent and cron_runs were all deleted afterwards",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Server date 2026-10-30. The cron now calls refresh_release_dates, which reloads wishlist dates from RAWG. Seeded test wishlist items must use game_ids that don't exist on RAWG (989999xxx) or their dates get overwritten. pytest runs with xdist loadscope; use -n 0 for a single serial file. AI chat testids: ai-chat-input, ai-chat-send-btn, ai-chat-reset, ai-suggestion-{i}, ai-msg-{role}-{index}.",
+  "rca of the issue": "TestCron.test_run_sends_once failed with reminders_sent=0. Cause: the new refresh_release_dates() fetched RAWG /games/990001, which is a real game (Settlements Rising, released 2024-10-02), and overwrote the seeded 'today' date, so no item matched today. The app behaved as intended; I fixed the test data."
+}

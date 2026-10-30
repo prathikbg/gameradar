@@ -491,15 +491,21 @@ def reminder_html(name: str, games: list):
 
 
 async def refresh_release_dates(today: str):
-    week_ago = (date.today() - timedelta(days=7)).isoformat()
-    ids = await db.wishlist.distinct("game_id", {"$or": [{"released": {"$gte": week_ago}}, {"released": None}]})
-    for gid in ids:
-        try:
-            d = await rawg(f"/games/{gid}")
-        except HTTPException:
-            continue
+    lo = (date.today() - timedelta(days=14)).isoformat()
+    hi = (date.today() + timedelta(days=14)).isoformat()
+    ids = await db.wishlist.distinct("game_id", {"$or": [{"released": {"$gte": lo, "$lte": hi}}, {"released": None}]})
+    sem = asyncio.Semaphore(5)
+
+    async def refresh(gid):
+        async with sem:
+            try:
+                d = await rawg(f"/games/{gid}")
+            except HTTPException:
+                return
         if d.get("released"):
             await db.wishlist.update_many({"game_id": gid}, {"$set": {"released": d["released"]}})
+
+    await asyncio.gather(*(refresh(g) for g in ids))
 
 
 async def run_release_reminders(run_id: str):

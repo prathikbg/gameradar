@@ -20,10 +20,16 @@ export default function Releases() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let alive = true;
     setLoading(true);
     api.get("/games/new", { params: { platform, ordering, page_num: pageNum } })
-      .then(({ data }) => { setGames((g) => (pageNum === 1 ? data.results : [...g, ...data.results])); setHasMore(data.next); })
-      .finally(() => setLoading(false));
+      .then(({ data }) => {
+        if (!alive) return;
+        setGames((g) => (pageNum === 1 ? data.results : [...g, ...data.results]));
+        setHasMore(data.next);
+      })
+      .finally(() => alive && setLoading(false));
+    return () => { alive = false; };
   }, [platform, ordering, pageNum]);
 
   const change = (fn) => (v) => { setPageNum(1); setGames([]); fn(v); };

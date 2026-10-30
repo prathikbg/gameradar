@@ -138,14 +138,14 @@ class TestCron:
         uid, h = user
         today = date.today().isoformat()
         # today's release -> should send; future release -> should not
-        requests.post(f"{API}/wishlist", json={"game_id": 990001, "name": "TEST Today Game", "released": today,
+        requests.post(f"{API}/wishlist", json={"game_id": 989999001, "name": "TEST Today Game", "released": today,
                                                "platforms": ["PC"]}, headers=h)
-        requests.post(f"{API}/wishlist", json={"game_id": 990002, "name": "TEST Future Game",
+        requests.post(f"{API}/wishlist", json={"game_id": 989999002, "name": "TEST Future Game",
                                                "released": "2099-01-01"}, headers=h)
         # disabled user with today's release -> no send
         uid2, tok2 = make_user("delivered@resend.dev")
         h2 = {"Authorization": f"Bearer {tok2}"}
-        requests.post(f"{API}/wishlist", json={"game_id": 990003, "name": "TEST Disabled", "released": today}, headers=h2)
+        requests.post(f"{API}/wishlist", json={"game_id": 989999003, "name": "TEST Disabled", "released": today}, headers=h2)
         requests.put(f"{API}/me/reminders", json={"enabled": False}, headers=h2)
 
         rid = f"TEST_run_{uuid.uuid4().hex[:6]}"
@@ -163,7 +163,7 @@ class TestCron:
         sent = mongo(f"print(db.reminders_sent.countDocuments({{user_id:'{uid}'}}))")
         assert sent == "1", f"reminders_sent for user = {sent}"
         assert mongo(f"print(db.reminders_sent.countDocuments({{user_id:'{uid2}'}}))") == "0"
-        assert mongo(f"print(db.reminders_sent.countDocuments({{game_id:990002}}))") == "0"
+        assert mongo(f"print(db.reminders_sent.countDocuments({{game_id:989999002}}))") == "0"
         # second run, different id -> no double send
         rid2 = f"TEST_run_{uuid.uuid4().hex[:6]}"
         r = requests.post(f"{API}/cron/release-reminders", headers={"Authorization": f"Bearer {SECRET}", "X-Webhook-Id": rid2})
