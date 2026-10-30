@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../lib/api";
@@ -57,9 +57,8 @@ const Form = ({ gameId, mine, onSaved }) => {
 export default function Reviews({ gameId }) {
   const { user, login } = useAuth();
   const [data, setData] = useState(null);
-  const load = () => api.get(`/games/${gameId}/reviews`).then(({ data }) => setData(data));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [gameId]);
+  const load = useCallback(() => api.get(`/games/${gameId}/reviews`).then(({ data }) => setData(data)), [gameId]);
+  useEffect(() => { load(); }, [load]);
   const mine = data?.reviews.find((r) => r.user_id === user?.user_id);
 
   return (

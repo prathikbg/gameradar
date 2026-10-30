@@ -18,8 +18,8 @@ export default function PriceBox({ gameId }) {
           </div>
           <p className="mt-1 text-xs text-slate-500">at {p.store}{p.cheapest_ever ? ` · lowest ever $${p.cheapest_ever.toFixed(2)}` : ""}</p>
           <div className="mt-3 space-y-1.5">
-            {p.deals.map((d, i) => (
-              <a key={i} href={d.url} target="_blank" rel="noreferrer" data-testid={`price-deal-${i}`}
+            {p.deals.map((d) => (
+              <a key={d.url} href={d.url} target="_blank" rel="noreferrer" data-testid={`price-deal-${d.store.toLowerCase().replace(/\s+/g, "-")}`}
                 className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm transition-colors hover:bg-white/10">
                 <span>{d.store}</span><span className="flex items-center gap-2 font-mono">${d.price.toFixed(2)}<ExternalLink className="h-3 w-3" /></span>
               </a>

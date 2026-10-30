@@ -1,3 +1,5 @@
+import DOMPurify from "dompurify";
+
 const inline = (s) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
@@ -27,5 +29,6 @@ const toHtml = (text) => {
 };
 
 export default function Markdown({ text }) {
-  return <div className="prose-ai" dangerouslySetInnerHTML={{ __html: toHtml(text) }} />;
+  const html = DOMPurify.sanitize(toHtml(text), { ALLOWED_TAGS: ["p", "ul", "ol", "li", "h3", "strong", "em"], ALLOWED_ATTR: [] });
+  return <div className="prose-ai" dangerouslySetInnerHTML={{ __html: html }} />;
 }

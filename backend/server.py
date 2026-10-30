@@ -141,6 +141,53 @@ async def genres():
     return [{"id": g["id"], "slug": g["slug"], "name": g["name"]} for g in data.get("results", [])]
 
 
+def _names(items):
+    return [x["name"] for x in items or []]
+
+
+def _pc_requirements(detail):
+    return next((p.get("requirements") for p in detail.get("platforms") or []
+                 if p["platform"]["slug"] == "pc" and p.get("requirements")), None)
+
+
+def _stores(detail, stores):
+    urls = {} if isinstance(stores, Exception) else {s["id"]: s["url"] for s in stores.get("results", [])}
+    return [{"name": s["store"]["name"], "url": urls.get(s["id"]) or f"https://{s['store']['domain']}"}
+            for s in detail.get("stores") or []]
+
+
+def _screenshots(shots):
+    return [] if isinstance(shots, Exception) else [s["image"] for s in shots.get("results", [])]
+
+
+def _trailers(movies):
+    if isinstance(movies, Exception):
+        return []
+    out = []
+    for m in movies.get("results", []):
+        data = m.get("data") or {}
+        out.append({"name": m["name"], "preview": m.get("preview"), "video": data.get("max") or data.get("480")})
+    return out
+
+
+def format_detail(detail, shots, movies, stores):
+    base = slim(detail)
+    base.update({
+        "description": detail.get("description_raw") or "",
+        "website": detail.get("website"),
+        "developers": _names(detail.get("developers")),
+        "publishers": _names(detail.get("publishers")),
+        "tags": [t["name"] for t in (detail.get("tags") or []) if t.get("language") == "eng"][:12],
+        "esrb": (detail.get("esrb_rating") or {}).get("name"),
+        "background_image_additional": detail.get("background_image_additional"),
+        "requirements": _pc_requirements(detail),
+        "stores": _stores(detail, stores),
+        "screenshots": _screenshots(shots),
+        "trailers": _trailers(movies),
+    })
+    return base
+
+
 @api.get("/games/{game_id}")
 async def game_detail(game_id: str):
     detail, shots, movies, stores = await asyncio.gather(
@@ -152,26 +199,7 @@ async def game_detail(game_id: str):
     )
     if isinstance(detail, Exception):
         raise detail
-    store_urls = {} if isinstance(stores, Exception) else {s["id"]: s["url"] for s in stores.get("results", [])}
-    base = slim(detail)
-    base.update({
-        "description": detail.get("description_raw") or "",
-        "website": detail.get("website"),
-        "developers": [d["name"] for d in detail.get("developers") or []],
-        "publishers": [p["name"] for p in detail.get("publishers") or []],
-        "tags": [t["name"] for t in (detail.get("tags") or []) if t.get("language") == "eng"][:12],
-        "esrb": (detail.get("esrb_rating") or {}).get("name"),
-        "background_image_additional": detail.get("background_image_additional"),
-        "requirements": next((p.get("requirements") for p in detail.get("platforms") or []
-                              if p["platform"]["slug"] == "pc" and p.get("requirements")), None),
-        "stores": [{"name": s["store"]["name"], "url": store_urls.get(s["id"]) or f"https://{s['store']['domain']}"}
-                   for s in detail.get("stores") or []],
-        "screenshots": [] if isinstance(shots, Exception) else [s["image"] for s in shots.get("results", [])],
-        "trailers": [] if isinstance(movies, Exception) else [
-            {"name": m["name"], "preview": m.get("preview"), "video": (m.get("data") or {}).get("max") or (m.get("data") or {}).get("480")}
-            for m in movies.get("results", [])],
-    })
-    return base
+    return format_detail(detail, shots, movies, stores)
 
 
 # ---------- Auth ----------
